@@ -8,6 +8,7 @@ public static class GameEventNames
     
     public const string OnResourceChanged = "OnResourceChanged";
     public const string OnAllResourcesUpdated = "OnAllResourcesUpdated";
+    public const string OnResourceCollected = "OnResourceCollected";
     public const string OnWorkshopItemSelected = "OnWorkshopItemSelected";
     public const string OnWorkshopItemCrafted = "OnWorkshopItemCrafted";
 
@@ -19,4 +20,8 @@ public static class GameEventNames
     public const string OnCaveExplorationEnded = "OnCaveExplorationEnded";
     public const string OnCaveOxygenChanged = "OnCaveOxygenChanged";
     public const string OnCaveResourceCollected = "OnCaveResourceCollected";
+
+    public const string OnInventoryUpdated = "OnInventoryUpdated";
+    public const string OnInventoryItemAdded = "OnInventoryItemAdded";
+    public const string OnInventoryItemRemoved = "OnInventoryItemRemoved";
 }

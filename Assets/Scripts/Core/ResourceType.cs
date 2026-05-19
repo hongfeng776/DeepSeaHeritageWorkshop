@@ -5,5 +5,19 @@ public enum ResourceType
     Stone,
     Iron,
     Crystal,
-    Energy
+    Energy,
+    IronOre,
+    CopperOre,
+    SilverOre,
+    GoldOre,
+    CrystalOre,
+    RelicFragment,
+    AncientRelic,
+    RareRelic,
+    HealthPotion,
+    EnergyPotion,
+    ShieldPotion,
+    SpeedPotion,
+    ExperiencePotion,
+    MysteryBox
 }

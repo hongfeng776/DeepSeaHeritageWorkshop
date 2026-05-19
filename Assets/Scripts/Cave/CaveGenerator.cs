@@ -9,6 +9,7 @@ public enum TileType
     Wall,
     Obstacle,
     Collectible,
+    OreNode,
     StartPoint,
     ExitPoint
 }
@@ -83,6 +84,7 @@ public class CaveGenerator : MonoBehaviour
     [Header("Generation Settings")]
     [SerializeField] [Range(0, 100)] private int obstacleDensity = 15;
     [SerializeField] [Range(0, 100)] private int collectibleDensity = 8;
+    [SerializeField] [Range(0, 100)] private int oreNodeDensity = 10;
     [SerializeField] private int corridorWidth = 2;
     [SerializeField] private bool bakeNavMesh = true;
     [SerializeField] private float navMeshBakeDelay = 0.3f;
@@ -145,6 +147,7 @@ public class CaveGenerator : MonoBehaviour
         GenerateObstacles();
         SetStartAndExitPoints();
         GenerateCollectibles();
+        GenerateOreNodes();
         BuildMap();
 
         Debug.Log($"洞穴生成完成！房间数: {rooms.Count}, 走廊数: {corridors.Count}");
@@ -426,6 +429,32 @@ public class CaveGenerator : MonoBehaviour
         }
     }
 
+    private void GenerateOreNodes()
+    {
+        foreach (Room room in rooms)
+        {
+            int oreCount = Mathf.FloorToInt(room.width * room.height * oreNodeDensity / 100f);
+            oreCount = Mathf.Max(0, oreCount);
+
+            for (int i = 0; i < oreCount; i++)
+            {
+                int attempts = 0;
+                while (attempts < 20)
+                {
+                    attempts++;
+                    int oreX = random.Next(room.x + 1, room.x + room.width - 1);
+                    int oreY = random.Next(room.y + 1, room.y + room.height - 1);
+
+                    if (mapTiles[oreX, oreY] == TileType.Floor)
+                    {
+                        mapTiles[oreX, oreY] = TileType.OreNode;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     private void SetStartAndExitPoints()
     {
         if (rooms.Count < 2) return;
@@ -468,6 +497,10 @@ public class CaveGenerator : MonoBehaviour
                     case TileType.Collectible:
                         CreateFloorTile(worldPos);
                         CreateCollectible(worldPos);
+                        break;
+                    case TileType.OreNode:
+                        CreateFloorTile(worldPos);
+                        CreateOreNode(worldPos);
                         break;
                     case TileType.StartPoint:
                     case TileType.ExitPoint:
@@ -562,6 +595,63 @@ public class CaveGenerator : MonoBehaviour
 
             CollectibleResource resource = collectible.AddComponent<CollectibleResource>();
         }
+    }
+
+    private void CreateOreNode(Vector3 position)
+    {
+        OreNodeType[] oreTypes = { OreNodeType.Iron, OreNodeType.Copper, OreNodeType.Silver, OreNodeType.Gold, OreNodeType.Crystal, OreNodeType.Relic };
+        float[] weights = { 0.35f, 0.25f, 0.18f, 0.10f, 0.08f, 0.04f };
+
+        float randomValue = (float)random.NextDouble();
+        float cumulativeWeight = 0f;
+        OreNodeType selectedType = OreNodeType.Iron;
+
+        for (int i = 0; i < oreTypes.Length; i++)
+        {
+            cumulativeWeight += weights[i];
+            if (randomValue <= cumulativeWeight)
+            {
+                selectedType = oreTypes[i];
+                break;
+            }
+        }
+
+        GameObject oreNode = new GameObject($"OreNode_{selectedType}");
+        oreNode.transform.position = position + Vector3.up * 0.5f;
+        oreNode.transform.SetParent(mapParent);
+
+        GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        visual.transform.SetParent(oreNode.transform);
+        visual.transform.localPosition = Vector3.zero;
+        visual.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
+
+        Color oreColor = GetOreColor(selectedType);
+        Renderer renderer = visual.GetComponent<Renderer>();
+        renderer.material.color = oreColor;
+        renderer.material.EnableKeyword("_EMISSION");
+        renderer.material.SetColor("_EmissionColor", oreColor * 0.2f);
+
+        Destroy(visual.GetComponent<Collider>());
+
+        BoxCollider collider = oreNode.AddComponent<BoxCollider>();
+        collider.size = new Vector3(1f, 1.5f, 1f);
+        collider.center = new Vector3(0, 0.5f, 0);
+
+        DestructibleOreNode ore = oreNode.AddComponent<DestructibleOreNode>();
+    }
+
+    private Color GetOreColor(OreNodeType type)
+    {
+        return type switch
+        {
+            OreNodeType.Iron => new Color(0.7f, 0.5f, 0.3f),
+            OreNodeType.Copper => new Color(0.8f, 0.5f, 0.2f),
+            OreNodeType.Silver => new Color(0.9f, 0.9f, 0.95f),
+            OreNodeType.Gold => new Color(1f, 0.85f, 0f),
+            OreNodeType.Crystal => new Color(0.8f, 0.3f, 1f),
+            OreNodeType.Relic => new Color(0.3f, 0.8f, 0.8f),
+            _ => Color.gray
+        };
     }
 
     public Vector3 TileToWorldPosition(int tileX, int tileY)

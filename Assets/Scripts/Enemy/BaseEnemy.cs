@@ -46,6 +46,13 @@ public class BaseEnemy : MonoBehaviour, IDamageable
     [SerializeField] private Color hurtColor = Color.white;
     [SerializeField] private Color chaseColor = Color.magenta;
 
+    [Header("Loot Settings")]
+    [SerializeField] private bool dropLootOnDeath = true;
+    [SerializeField] private int minGoldDrop = 5;
+    [SerializeField] private int maxGoldDrop = 20;
+    [SerializeField] private float resourceDropChance = 0.7f;
+    [SerializeField] private ResourceType[] possibleDrops = { ResourceType.IronOre, ResourceType.Crystal, ResourceType.Energy };
+
     private NavMeshAgent agent;
     private Transform player;
     private EnemyState currentState;
@@ -403,7 +410,25 @@ public class BaseEnemy : MonoBehaviour, IDamageable
             enemyRenderer.material.color = Color.gray;
         }
 
+        if (dropLootOnDeath)
+        {
+            DropLoot();
+        }
+
         Destroy(gameObject, 2f);
+    }
+
+    private void DropLoot()
+    {
+        int goldAmount = Random.Range(minGoldDrop, maxGoldDrop + 1);
+        DropResourceManager.Instance?.SpawnDrop(ResourceType.Gold, goldAmount, transform.position + Vector3.up * 0.5f, 2f, 0.5f);
+
+        if (Random.value <= resourceDropChance && possibleDrops != null && possibleDrops.Length > 0)
+        {
+            ResourceType dropType = possibleDrops[Random.Range(0, possibleDrops.Length)];
+            int dropAmount = Random.Range(1, 4);
+            DropResourceManager.Instance?.SpawnDrop(dropType, dropAmount, transform.position + Vector3.up * 0.5f, 2.5f, 0.6f);
+        }
     }
 
     private void OnDrawGizmosSelected()
