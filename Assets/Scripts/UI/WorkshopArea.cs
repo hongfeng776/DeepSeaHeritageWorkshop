@@ -127,11 +127,20 @@ public class WorkshopArea : MonoBehaviour
             }
 
             detailPanel?.Refresh(data);
+
+            AwardUpgradeExp(data.level);
         }
         else
         {
             Debug.LogWarning("Not enough resources to upgrade!");
         }
+    }
+
+    private void AwardUpgradeExp(int buildingLevel)
+    {
+        long expAmount = 20 + buildingLevel * 10;
+        WorkshopLevelManager.Instance.AddExp(expAmount);
+        Debug.Log($"升级建筑获得工坊经验: {expAmount}");
     }
 
     private bool CanAffordUpgrade(WorkshopItemData data)
@@ -185,8 +194,29 @@ public class WorkshopItem : MonoBehaviour
     [SerializeField] private Button button;
     [SerializeField] private Animator animator;
 
+    [Header("Animation Settings")]
+    [SerializeField] private float pressedScale = 0.92f;
+    [SerializeField] private float animationDuration = 0.15f;
+    [SerializeField] private string clickSfxPath = "Audio/click";
+    [SerializeField] private bool playSound = true;
+
     public WorkshopItemData Data { get; private set; }
     private Action<WorkshopItemData> clickCallback;
+    private Vector3 originalScale;
+    private Coroutine currentAnimation;
+
+    private void Awake()
+    {
+        if (button == null)
+        {
+            button = GetComponent<Button>();
+        }
+        if (button == null)
+        {
+            button = GetComponentInChildren<Button>();
+        }
+        originalScale = transform.localScale;
+    }
 
     public void Initialize(WorkshopItemData data, Action<WorkshopItemData> callback)
     {
@@ -194,7 +224,12 @@ public class WorkshopItem : MonoBehaviour
         clickCallback = callback;
 
         Refresh(data);
-        button?.onClick.AddListener(OnClick);
+        
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(OnClick);
+        }
     }
 
     public void Refresh(WorkshopItemData data)
@@ -224,8 +259,47 @@ public class WorkshopItem : MonoBehaviour
 
     private void OnClick()
     {
+        PlayClickAnimation();
+        PlayClickSound();
         clickCallback?.Invoke(Data);
         animator?.SetTrigger("Click");
+    }
+
+    private void PlayClickAnimation()
+    {
+        if (currentAnimation != null)
+        {
+            StopCoroutine(currentAnimation);
+        }
+        currentAnimation = StartCoroutine(ScaleAnimation());
+    }
+
+    private System.Collections.IEnumerator ScaleAnimation()
+    {
+        float elapsedTime = 0f;
+        transform.localScale = originalScale * pressedScale;
+
+        yield return new WaitForSeconds(animationDuration * 0.5f);
+
+        elapsedTime = 0f;
+        while (elapsedTime < animationDuration * 0.5f)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = elapsedTime / (animationDuration * 0.5f);
+            transform.localScale = Vector3.Lerp(originalScale * pressedScale, originalScale, t);
+            yield return null;
+        }
+
+        transform.localScale = originalScale;
+        currentAnimation = null;
+    }
+
+    private void PlayClickSound()
+    {
+        if (playSound && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySfx(clickSfxPath);
+        }
     }
 
     private void OnDestroy()
@@ -247,15 +321,78 @@ public class WorkshopDetailPanel : MonoBehaviour
     [SerializeField] private Button closeButton;
     [SerializeField] private Animator animator;
 
+    [Header("Animation Settings")]
+    [SerializeField] private float pressedScale = 0.92f;
+    [SerializeField] private float animationDuration = 0.15f;
+    [SerializeField] private string clickSfxPath = "Audio/click";
+    [SerializeField] private bool playSound = true;
+
     private WorkshopItemData currentData;
     private Action<WorkshopItemData> upgradeCallback;
     private Action closeCallback;
     private List<ResourceCostItem> costItems = new List<ResourceCostItem>();
+    private Dictionary<Button, Vector3> buttonOriginalScales = new Dictionary<Button, Vector3>();
+    private Dictionary<Button, Coroutine> currentAnimations = new Dictionary<Button, Coroutine>();
 
     private void Awake()
     {
-        upgradeButton?.onClick.AddListener(OnUpgradeClicked);
-        closeButton?.onClick.AddListener(OnCloseClicked);
+        if (upgradeButton != null)
+        {
+            upgradeButton.onClick.AddListener(() => OnButtonClicked(upgradeButton, OnUpgradeClicked));
+            buttonOriginalScales[upgradeButton] = upgradeButton.transform.localScale;
+        }
+        if (closeButton != null)
+        {
+            closeButton.onClick.AddListener(() => OnButtonClicked(closeButton, OnCloseClicked));
+            buttonOriginalScales[closeButton] = closeButton.transform.localScale;
+        }
+    }
+
+    private void OnButtonClicked(Button button, System.Action callback)
+    {
+        PlayButtonAnimation(button);
+        PlayButtonSound();
+        callback?.Invoke();
+    }
+
+    private void PlayButtonAnimation(Button button)
+    {
+        if (!buttonOriginalScales.TryGetValue(button, out Vector3 originalScale))
+            return;
+
+        if (currentAnimations.TryGetValue(button, out Coroutine coroutine) && coroutine != null)
+        {
+            StopCoroutine(coroutine);
+        }
+
+        currentAnimations[button] = StartCoroutine(ButtonScaleAnimation(button.transform, originalScale));
+    }
+
+    private System.Collections.IEnumerator ButtonScaleAnimation(Transform buttonTransform, Vector3 originalScale)
+    {
+        float elapsedTime = 0f;
+        buttonTransform.localScale = originalScale * pressedScale;
+
+        yield return new WaitForSeconds(animationDuration * 0.5f);
+
+        elapsedTime = 0f;
+        while (elapsedTime < animationDuration * 0.5f)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = elapsedTime / (animationDuration * 0.5f);
+            buttonTransform.localScale = Vector3.Lerp(originalScale * pressedScale, originalScale, t);
+            yield return null;
+        }
+
+        buttonTransform.localScale = originalScale;
+    }
+
+    private void PlayButtonSound()
+    {
+        if (playSound && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySfx(clickSfxPath);
+        }
     }
 
     public void Show(WorkshopItemData data, Action<WorkshopItemData> onUpgrade, Action onClose)

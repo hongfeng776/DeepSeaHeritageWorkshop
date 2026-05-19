@@ -13,5 +13,7 @@ public class Bootstrapper : MonoBehaviour
         managersRoot.AddComponent<AudioManager>();
         managersRoot.AddComponent<SceneLoader>();
         managersRoot.AddComponent<UIManager>();
+        managersRoot.AddComponent<ResourceManager>();
+        managersRoot.AddComponent<WorkshopLevelManager>();
     }
 }

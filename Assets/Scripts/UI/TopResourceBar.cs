@@ -11,6 +11,14 @@ public class TopResourceBar : MonoBehaviour
     [Header("Container")]
     [SerializeField] private Transform resourceContainer;
 
+    [Header("Display Settings")]
+    [SerializeField] private ResourceType[] displayResources = new ResourceType[]
+    {
+        ResourceType.Gold,
+        ResourceType.Iron,
+        ResourceType.Energy
+    };
+
     private Dictionary<ResourceType, ResourceItem> resourceItems = new Dictionary<ResourceType, ResourceItem>();
 
     private void Awake()
@@ -43,7 +51,13 @@ public class TopResourceBar : MonoBehaviour
             return;
         }
 
-        foreach (ResourceType type in Enum.GetValues(typeof(ResourceType)))
+        foreach (Transform child in resourceContainer)
+        {
+            Destroy(child.gameObject);
+        }
+        resourceItems.Clear();
+
+        foreach (ResourceType type in displayResources)
         {
             if (!resourceItems.ContainsKey(type))
             {
@@ -52,27 +66,29 @@ public class TopResourceBar : MonoBehaviour
                 resourceItems[type] = item;
             }
         }
+
+        Debug.Log($"TopResourceBar initialized with {resourceItems.Count} resources");
     }
 
     public void Refresh()
     {
-        var allResources = ResourceManager.Instance.GetAllResources();
-        foreach (var resource in allResources)
+        foreach (var type in displayResources)
         {
-            if (resourceItems.TryGetValue(resource.Key, out ResourceItem item))
+            long amount = ResourceManager.Instance.GetResource(type);
+            if (resourceItems.TryGetValue(type, out ResourceItem item))
             {
-                item.UpdateAmount(resource.Value);
+                item.UpdateAmount(amount);
             }
         }
     }
 
     private void OnAllResourcesUpdated(Dictionary<ResourceType, long> resources)
     {
-        foreach (var resource in resources)
+        foreach (var type in displayResources)
         {
-            if (resourceItems.TryGetValue(resource.Key, out ResourceItem item))
+            if (resources.TryGetValue(type, out long amount) && resourceItems.TryGetValue(type, out ResourceItem item))
             {
-                item.UpdateAmount(resource.Value);
+                item.UpdateAmount(amount);
             }
         }
     }
@@ -90,6 +106,7 @@ public class ResourceItem : MonoBehaviour
 {
     [Header("UI Components")]
     [SerializeField] private Image iconImage;
+    [SerializeField] private Text nameText;
     [SerializeField] private Text amountText;
     [SerializeField] private Text deltaText;
     [SerializeField] private Animator animator;
@@ -100,10 +117,26 @@ public class ResourceItem : MonoBehaviour
     private const float DeltaDisplayDuration = 2f;
     private float deltaTimer;
 
+    private static readonly Dictionary<ResourceType, string> ResourceNames = new Dictionary<ResourceType, string>
+    {
+        { ResourceType.Gold, "金币" },
+        { ResourceType.Wood, "木材" },
+        { ResourceType.Stone, "石材" },
+        { ResourceType.Iron, "矿石" },
+        { ResourceType.Crystal, "水晶" },
+        { ResourceType.Energy, "遗迹能量" }
+    };
+
     public void Initialize(ResourceType type)
     {
         resourceType = type;
         gameObject.name = $"ResourceItem_{type}";
+        
+        if (nameText != null && ResourceNames.TryGetValue(type, out string resourceName))
+        {
+            nameText.text = resourceName;
+        }
+        
         LoadIcon(type);
         deltaText?.gameObject.SetActive(false);
     }

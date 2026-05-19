@@ -10,4 +10,8 @@ public static class GameEventNames
     public const string OnAllResourcesUpdated = "OnAllResourcesUpdated";
     public const string OnWorkshopItemSelected = "OnWorkshopItemSelected";
     public const string OnWorkshopItemCrafted = "OnWorkshopItemCrafted";
+
+    public const string OnWorkshopExpChanged = "OnWorkshopExpChanged";
+    public const string OnWorkshopLevelUp = "OnWorkshopLevelUp";
+    public const string OnWorkshopLevelUpdated = "OnWorkshopLevelUpdated";
 }
